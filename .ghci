@@ -1,0 +1,10 @@
+:load ghci/GHCI.hs
+
+:def init initGHCI
+:def ll   (llGHCI Nothing)
+:def rl   rlGHCI
+
+:load
+
+:init
+:ll
