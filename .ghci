@@ -1,10 +1,7 @@
-:load ghci/GHCI.hs
+:load FP.Prelude.Core
+type String = Prelude.String
 
-:def init initGHCI
-:def ll   (llGHCI Nothing)
-:def rl   rlGHCI
-
-:load
-
-:init
-:ll
+:set prompt  "%s ≫= "
+:set prompt2 "%s  | "
+:set +m
+:def pp (const $ return $ chars ":r \n :set -interactive-print=pprint")

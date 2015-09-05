@@ -1,6 +1,0 @@
-:load ghci/GHCI.hs
-
-:undef ll
-:def   ll (llGHCI $ Just "FP")
-
-:load

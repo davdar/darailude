@@ -1,0 +1,624 @@
+-- infix  9 ?
+-- infixl 9 #
+-- infixl 9 #!
+-- infixl 9 <@>
+-- infixl 9 *@
+-- infixl 9 ^@
+-- infixl 9 ^*@
+-- infixr 9 *.
+-- infixr 9 ^.
+-- infixr 9 .^
+-- infixr 9 ^^.
+-- infixr 9 ^.:
+-- infixr 9 ^*.
+-- infixr 9 <.>
+-- infixr 9 .:
+-- infixr 9 ..:
+-- infixr 9 :.:
+-- 
+-- infix  7 /
+-- infix  7 //
+-- infixr 7 *
+-- infixr 7 <*>
+-- infixr 7 /\
+-- 
+-- infix  6 -
+-- infix  6 \\
+-- infixr 6 +
+-- infixr 6 ++
+-- infixr 6 :+:
+-- infixr 6 <+>
+-- infixr 6 \/
+-- 
+-- infix  4 ⊑
+-- infix  4 ⊏
+-- 
+-- infixl 1 >>=
+-- infixl 1 >>
+-- infixr 1 ~>
+-- 
+-- infixr 0 *$
+-- infixr 0 ^$
+-- infixr 0 ^*$
+-- infixr 0 <$>
+-- 
+
+
+-- class (TruncateDivisible a,ToInteger a,FromInteger a,ToInt a,FromInt a,ToRational a,ToDouble a) => Integral a
+-- class (Divisible a,ToRational a,FromRational a,ToDouble a,FromDouble a,FromInteger a,FromInt a) => Fractional a
+-- 
+-- -- PartialOrder {{{
+-- 
+-- data POrdering = PEQ | PLT | PGT | PUN
+-- 
+-- -- Minimal definition: pcompare OR (⊑)
+-- class PartialOrder a where
+--   pcompare :: a -> a -> POrdering
+--   pcompare x y = case (x ⊑ y, y ⊑ x) of
+--     (True , True ) -> PEQ
+--     (True , False) -> PLT
+--     (False, True ) -> PGT
+--     (False, False) -> PUN
+--   (⊑) :: a -> a -> Bool
+--   x ⊑ y = case pcompare x y of
+--     PLT -> True
+--     PEQ -> True
+--     _   -> False
+--   (⊏) :: a -> a -> Bool
+--   x ⊏ y = case pcompare x y of
+--     PLT -> True
+--     _ -> False
+-- 
+-- (⋚) :: (Ord a)          => a -> a -> Ordering  ; (⋚) = compare
+-- (⋈) :: (PartialOrder a) => a -> a -> POrdering ; (⋈) = pcompare
+-- (⊒) :: (PartialOrder a) => a -> a -> Bool      ; (⊒) = flip (⊑)
+-- (⊐) :: (PartialOrder a) => a -> a -> Bool      ; (⊐) = flip (⊏)
+-- 
+-- fromOrdering :: Ordering -> POrdering
+-- fromOrdering EQ = PEQ
+-- fromOrdering LT = PLT
+-- fromOrdering GT = PGT
+-- 
+-- discreteOrder :: (Eq a) => a -> a -> POrdering
+-- discreteOrder x y = if x == y then PEQ else PUN
+-- 
+-- -- TODO: rename this and make findMax not be predicated on `p`
+-- findMax :: (Iterable a t, PartialOrder b) => (a -> b) -> a -> t -> a
+-- findMax p i0 = iterFrom i0 $ \ a i -> if p a ⊐ p i then a else i
+-- 
+-- findMaxFrom :: (Iterable a t, PartialOrder b) => a -> (a -> b) -> t -> a
+-- findMaxFrom = flip findMax
+-- 
+-- findMax' :: (Iterable a t, PartialOrder a, JoinLattice a) => t -> a
+-- findMax' = findMax id bot
+-- 
+-- 
+-- -- }}}
+-- class Unit2       (t :: (* -> *) -> (* -> *)) where unit2   :: m                ~> t m
+-- class Join2       (t :: (* -> *) -> (* -> *)) where join2   :: t (t m)          ~> t m
+-- class Functor2    (t :: (* -> *) -> (* -> *)) where map2    :: (m ~> n)         -> (t m ~> t n)
+-- class IsoFunctor2 (t :: (* -> *) -> (* -> *)) where isoMap2 :: (m ~> n, n ~> m) -> (t m ~> t n)
+
+-- class MonadUnit2       (t :: (* -> *) -> (* -> *)) where munit2   :: (Monad m)          => m                ~> t m
+-- class MonadJoin2       (t :: (* -> *) -> (* -> *)) where mjoin2   :: (Monad m)          => t (t m)          ~> t m
+-- class MonadFunctor2    (t :: (* -> *) -> (* -> *)) where mmap2    :: (Monad m, Monad n) => (m ~> n)         -> (t m ~> t n)
+-- class MonadIsoFunctor2 (t :: (* -> *) -> (* -> *)) where misoMap2 :: (Monad m, Monad n) => (m ~> n, n ~> m) -> (t m ~> t n)
+
+-- newtype RWST r o s m a = RWST { runRWST :: ReaderT r (WriterT o (StateT s m)) a }
+-- 
+-- class (MonadReader r m,MonadWriter o m,MonadState s m) => MonadRWS r o s m where
+--   rwsE :: RWST r o s m ↝ m
+--   rwsI :: m ↝ RWST r o s m
+-----------------
+-- Applicative --
+-----------------
+-- instance Unit ((⨄) a) where unit = Inr
+-- class Unit (t ∷ ★ → ★) where unit ∷ a → t a
+-- class Applicative (t ∷ ★ → ★) where {pure ∷ a → t a;(<⋅>) ∷ t (a → b) → t a → t b}
+-- class Product (t ∷ ★ → ★) where (<*>) ∷ t a → t b → t (a,b)
+-- (<$>) ∷ (Applicative t) ⇒ t (a → b) → t a → t b 
+-- (<$>) = (<⋅>)
+
+-- apair ∷ (Applicative t) ⇒ t a → t b → t (a,b) 
+-- apair aA bA = pure (,) <⋅> aA <⋅> bA
+
+-- instance Product ((⨄) a) where (<*>) = mpair
+-- instance Applicative ((⨄) a) where {pure = unit;(<⋅>) = mapply}
+-- instance Unit Maybe where unit = return
+-- instance Applicative Maybe where {pure = return;(<⋅>) = mapply}
+-- instance Product Maybe where (<*>) = mpair
+-- instance Unit IO where unit = return
+-- instance Applicative IO where {pure = return;(<⋅>) = mapply}
+-- instance Product IO where (<*>) = mpair
+-- instance Unit Q where unit = return
+-- instance Applicative Q where {pure = return;(<⋅>) = mapply}
+-- instance Product Q where (<*>) = mpair
+---------------------------------------
+-- Monads -----------------------------
+---------------------------------------
+-- 
+-- instance Unit ID where unit = ID
+-- instance Product ID where aM <*> bM = ID $ (runID aM, runID bM)
+-- instance Applicative ID where fM <⋅> aM = ID $ runID fM $ runID aM
+-- instance (Unit m) ⇒ Unit (MaybeT m) where
+--   unit = MaybeT ∘ unit ∘ Just
+-- instance (Functor m, Product m) ⇒ Product (MaybeT m) where
+--   aM1 <*> aM2 = MaybeT $ uncurry ff ^$ runMaybeT aM1 <*> runMaybeT aM2
+--     where
+--       ff Nothing _ = Nothing
+--       ff _ Nothing = Nothing
+--       ff (Just a1) (Just a2) = Just (a1, a2)
+-- instance (Functor m, Applicative m) ⇒ Applicative (MaybeT m) where
+--   fM <⋅> aM = MaybeT $ ff ^⋅ runMaybeT fM <$> runMaybeT aM
+--     where
+--       ff Nothing _ = Nothing
+--       ff _ Nothing = Nothing
+--       ff (Just f) (Just a) = Just $ f a
+-- instance (Unit m) ⇒ Unit (ErrorT e m) where
+--   unit a = ErrorT $ unit $ Inr a
+-- instance (Functor m, Product m) ⇒ Product (ErrorT e m) where
+--   aM1 <*> aM2 = ErrorT $ ff ^$ runErrorT aM1 <*> runErrorT aM2
+--     where
+--       ff (Inl e, _) = Inl e
+--       ff (_, Inl e) = Inl e
+--       ff (Inr a, Inr b) = Inr (a, b)
+-- instance (Functor m, Applicative m) ⇒ Applicative (ErrorT e m) where
+--   fM <⋅> aM = ErrorT $ ff ^⋅ runErrorT fM <$> runErrorT aM
+--     where
+--       ff (Inl e) _ = Inl e
+--       ff _ (Inl e) = Inl e
+--       ff (Inr f) (Inr a) = Inr $ f a
+-- instance (Unit m) ⇒ Unit (ReaderT r m) where
+--   unit = ReaderT ∘ const ∘ unit
+-- instance (Product m) ⇒ Product (ReaderT r m) where
+--   aM1 <*> aM2 = ReaderT $ \ r →
+--     runReaderTWith r aM1 <*> runReaderTWith r aM2
+-- instance (Applicative m) ⇒ Applicative (ReaderT r m) where
+--   fM <⋅> aM = ReaderT $ \ r →
+--     runReaderTWith r fM <⋅> runReaderTWith r aM
+-- instance (Unit m, Monoid o) ⇒ Unit (WriterT o m) where unit = WriterT ∘ unit ∘ (null,)
+-- instance (Functor m, Product m, Monoid o) ⇒ Product (WriterT o m) where
+--   aM1 <*> aM2 = WriterT $ ff ^$ runWriterT aM1 <*> runWriterT aM2
+--     where
+--       ff ((o1, a1), (o2, a2)) = (o1 ++ o2, (a1, a2))
+-- instance (Functor m, Applicative m, Monoid o) ⇒ Applicative (WriterT o m) where
+--   fM <⋅> aM = WriterT $ ff2 ^$ ff1 ^⋅ runWriterT fM <$> runWriterT aM
+--     where
+--       ff1 (o, f) = mapSnd ((o,) ∘ f)
+--       ff2 (o2, (o1, a)) = (o1 ++ o2, a)
+-- instance (Unit m) ⇒ Unit (StateT s m) where unit x = StateT $ \ s → unit (s, x)
+-- instance (Monad m) ⇒ Product (StateT s m) where (<*>) = mpair
+-- instance (Monad m) ⇒ Applicative (StateT s m) where (<⋅>) = mapply
+-- runRWST ∷ (Functor m) ⇒ r → s → RWST r o s m a → m (s, o, a)
+-- runRWST r0 s0 = ff ^∘ runStateTWith s0 ∘ runWriterT ∘ runReaderT r0 ∘ unRWST
+--   where
+--     ff (s, (o, a)) = (s, o, a)
+-- rwsCommute ∷ (Monad m, Monoid o1, Monoid o2) ⇒ RWST r1 o1 s1 (RWST r2 o2 s2 m) ↝ RWST r2 o2 s2 (RWST r1 o1 s1 m)
+-- rwsCommute =
+--   RWST
+--   ∘ fmap (fmap rwsStateCommute ∘ rwsWriterCommute)
+--   ∘ rwsReaderCommute
+--   ∘ mmap2 unRWST
+-- 
+-- deriving instance (Unit m, Monoid o) ⇒ Unit (RWST r o s m)
+-- deriving instance (Functor m) ⇒ Functor (RWST r o s m)
+-- deriving instance (Monad m, Monoid o) ⇒ Product (RWST r o s m)
+-- deriving instance (Monad m, Monoid o) ⇒ Applicative (RWST r o s m)
+-- deriving instance (Monad m, Monoid o) ⇒ Bind (RWST r o s m)
+-- deriving instance (Monad m, Monoid o) ⇒ Monad (RWST r o s m)
+-- instance (Monoid o) ⇒ MonadUnit2 (RWST r o s) where
+--   munit2 = RWST ∘ funit ∘ funit ∘ funit
+-- instance (Monoid o) ⇒ MonadJoin2 (RWST r o s) where
+--   mjoin2 =
+--     RWST
+--     ∘ fjoin
+--     ∘ fmap (fmap fjoin ∘ writerReaderCommute)
+--     ∘ fmap (fmap (fmap (fmap fjoin ∘ stateWriterCommute) ∘ stateReaderCommute))
+--     ∘ unRWST ∘ mmap2 unRWST
+-- instance (Monoid o) ⇒ MonadFunctor2 (RWST r o s) where
+--   mmap2 f = RWST ∘ fmap (fmap (fmap f)) ∘ unRWST
+-- 
+-- deriving instance (Monad m, Monoid o) ⇒ MonadReader r (RWST r o s m)
+-- deriving instance (Monad m, Monoid o) ⇒ MonadWriter o (RWST r o s m)
+-- deriving instance (Monad m, Monoid o) ⇒ MonadState s (RWST r o s m)
+-- instance (Monad m, Monoid o) ⇒ MonadRWS r o s (RWST r o s m) where
+--   rwsI ∷ RWST r o s m ↝ RWST r o s (RWST r o s m)
+--   rwsI = rwsCommute ∘ munit2
+--   rwsE ∷ RWST r o s (RWST r o s m) ↝ RWST r o s m
+--   rwsE = mjoin2 ∘ rwsCommute
+-- 
+-- deriving instance (MonadZero m, Monoid o) ⇒ MonadZero (RWST r o s m)
+-- deriving instance (Functor m, MonadMaybe m, Monoid o) ⇒ MonadMaybe (RWST r o s m)
+
+-- instance (Unit m) ⇒ Unit (ListT m) where
+--   unit = ListT ∘ unit ∘ list ∘ single
+-- instance (Monad m, Functorial Monoid m) ⇒ Product (ListT m) where
+--   (<*>) = mpair
+-- instance (Monad m, Functorial Monoid m) ⇒ Applicative (ListT m) where
+--   (<⋅>) = mapply
+-- newtype SetT m a = SetT { unSetT ∷ m (Set a) }
+-- mapSetT ∷ (m (Set a) → m (Set b)) → SetT m a → SetT m b
+-- mapSetT f = SetT ∘ f ∘ unSetT
+-- 
+-- setCommute ∷ (Functor m) ⇒ SetT (SetT m) ↝ SetT (SetT m)
+-- setCommute = SetT ∘ SetT ∘ setTranspose ^∘ unSetT ∘ unSetT
+-- 
+-- instance (Functor m, Product m) ⇒ Product (SetT m) where
+--   (<*>) ∷ forall a b. SetT m a → SetT m b → SetT m (a, b)
+--   aM1 <*> aM2 = SetT $ uncurry (<*>) ^$ unSetT aM1 <*> unSetT aM2
+-- instance (Functorial JoinLattice m, Monad m) ⇒ Bind (SetT m) where
+--   aM ≫= k = SetT $ do
+--     aC ← unSetT aM
+--     unSetT $ msum $ k ^$ toList aC
+-- instance (Functorial JoinLattice m) ⇒ MonadZero (SetT m) where
+--   mzero ∷ forall a. SetT m a
+--   mzero = 
+--     with (functorial ∷ W (JoinLattice (m (Set a)))) $
+--     SetT bot
+-- instance (Functorial JoinLattice m) ⇒ MonadJoin (SetT m) where
+--   (<⊔>) ∷ forall a. SetT m a → SetT m a → SetT m a
+--   aM1 <⊔> aM2 =
+--     with (functorial ∷ W (JoinLattice (m (Set a)))) $
+--     SetT $ unSetT aM1 ⊔ unSetT aM2
+
+-- instance Unit (ContT r m) where
+--   unit a = ContT $ \ k → k a
+-- instance Applicative (ContT r m) where
+--   pure = return
+--   (<⋅>) = mapply
+-- instance Product (ContT r m) where
+--   (<*>) = mpair
+-- instance (Morphism3 (k r) (ContFun r)) ⇒ Unit (OpaqueContT k r m) where
+--   unit ∷ a → OpaqueContT k r m a
+--   unit a = OpaqueContT  $ \ k → runContFun (morph3 k) a
+-- instance (Monad m, Isomorphism3 (ContFun r) (k r)) ⇒ Applicative (OpaqueContT k r m) where (<⋅>) = mapply
+-- instance (Monad m, Isomorphism3 (ContFun r) (k r)) ⇒ Product (OpaqueContT k r m) where (<*>) = mpair
+-- writerRWSCommute ∷ (Monad m, Monoid o1, Monoid o2) ⇒ WriterT o1 (RWST r o2 s m) ↝ RWST r o2 s (WriterT o1 m)
+-- writerRWSCommute =
+--     RWST
+--   ∘ fmap 
+--     ( fmap writerStateCommute
+--     ∘ writerCommute
+--     )
+--   ∘ writerReaderCommute
+--   ∘ fmap unRWST
+-- 
+-- rwsWriterCommute ∷ (Monad m, Monoid o1, Monoid o2) ⇒ RWST r o1 s (WriterT o2 m) ↝ WriterT o2 (RWST r o1 s m)
+-- rwsWriterCommute =
+--     fmap RWST
+--   ∘ readerWriterCommute
+--   ∘ fmap 
+--     ( writerCommute
+--     ∘ fmap stateWriterCommute
+--     )
+--   ∘ unRWST
+-- stateRWSCommute ∷ (Monad m, Monoid o) ⇒ StateT s1 (RWST r o s2 m) ↝ RWST r o s2 (StateT s1 m)
+-- stateRWSCommute =
+--     RWST
+--   ∘ fmap 
+--     ( fmap stateCommute
+--     ∘ stateWriterCommute
+--     )
+--   ∘ stateReaderCommute
+--   ∘ fmap unRWST
+-- 
+-- rwsStateCommute ∷ (Monad m, Monoid o) ⇒ RWST r o s1 (StateT s2 m) ↝ StateT s2 (RWST r o s1 m)
+-- rwsStateCommute =
+--     fmap RWST
+--   ∘ readerStateCommute
+--   ∘ fmap 
+--     ( writerStateCommute
+--     ∘ fmap stateCommute
+--     )
+--   ∘ unRWST
+-- class Commute (t ∷ ★ → ★) (u ∷ ★ → ★) where commute ∷ t (u a) → u (t a)
+--
+--
+-- module FP.String where
+-- 
+-- import FP.Core
+-- 
+-- import Text.Regex.TDFA ((=~))
+-- import qualified Data.Text.Encoding as Text
+-- 
+-- match :: String -> String -> (String, String, String)
+-- match pat t = 
+--   let (before, m, after) = Text.encodeUtf8 t =~ toChars pat 
+--   in (Text.decodeUtf8 before, Text.decodeUtf8 m, Text.decodeUtf8 after)
+-- 
+-- matches :: String -> String -> Bool
+-- matches pat t = Text.encodeUtf8 t =~ toChars pat
+-- 
+-- subst :: String -> String -> String -> String
+-- subst pat replacement t =
+--   let (before, m, after) = match pat t
+--   in if m == "" then t else before ++ replacement ++ subst pat replacement after
+--
+--
+--
+-- module FP.Lattice where
+-- 
+-- import FP.Prelude
+-- import FP.Pretty
+-- 
+-- -- data FreeJoinLattice a =
+-- --     FreeJoinBot
+-- --   | FreeJoinJoin (FreeJoinLattice a) (FreeJoinLattice a)
+-- --   | FreeJoinLatticeElem a
+-- -- 
+-- -- instance ToStream a (FreeJoinLattice a) where 
+-- --   stream ∷ FreeJoinLattice a → Stream a
+-- --   stream FreeJoinBot = null
+-- --   stream (FreeJoinJoin xs ys) = stream xs ⧺ stream ys
+-- --   stream (FreeJoinLatticeElem x) = ssingle x
+-- -- 
+-- -- instance Functor FreeJoinLattice where
+-- --   map ∷ (a → b) → FreeJoinLattice a → FreeJoinLattice b
+-- --   map _ FreeJoinBot = FreeJoinBot
+-- --   map f (FreeJoinJoin xs ys) = FreeJoinJoin (map f xs) (map f ys)
+-- --   map f (FreeJoinLatticeElem x) = FreeJoinLatticeElem $ f x
+-- -- instance Monad FreeJoinLattice where
+-- --   return ∷ a → FreeJoinLattice a
+-- --   return = FreeJoinLatticeElem
+-- --   (≫=) ∷ FreeJoinLattice a → (a → FreeJoinLattice b) → FreeJoinLattice b
+-- --   FreeJoinBot ≫= _ = FreeJoinBot
+-- --   FreeJoinJoin xs ys ≫= k = FreeJoinJoin (xs ≫= k) (ys ≫= k)
+-- --   FreeJoinLatticeElem x ≫= k = k x
+-- -- 
+-- -- instance Bot (FreeJoinLattice a) where bot = FreeJoinBot
+-- -- instance Join (FreeJoinLattice a) where (⊔) = FreeJoinJoin
+-- -- instance JoinLattice (FreeJoinLattice a)
+-- -- 
+-- -- newtype FreeJoinLatticeT m a = FreeJoinLatticeT { runFreeJoinLatticeT ∷ m (FreeJoinLattice a) }
+-- -- 
+-- -- instance (Functor m) ⇒ Functor (FreeJoinLatticeT m) where
+-- --   map ∷ (a → b) → FreeJoinLatticeT m a → FreeJoinLatticeT m b
+-- --   map f = FreeJoinLatticeT ∘ map (map f) ∘ runFreeJoinLatticeT
+-- -- instance
+-- --   ( Monad m
+-- --   , Functorial Bot m
+-- --   , Functorial Join m
+-- --   ) ⇒ Monad (FreeJoinLatticeT m) where
+-- --   return ∷ a → FreeJoinLatticeT m a
+-- --   return = FreeJoinLatticeT ∘ return ∘ FreeJoinLatticeElem
+-- --   (≫=) ∷ FreeJoinLatticeT m a → (a → FreeJoinLatticeT m b) → FreeJoinLatticeT m b
+-- --   xM ≫= k₀ = FreeJoinLatticeT $ do
+-- --     x ← runFreeJoinLatticeT xM 
+-- --     runFreeJoinLatticeT $ loop x k₀
+-- --     where
+-- --       loop ∷ FreeJoinLattice a → (a → FreeJoinLatticeT m b) → FreeJoinLatticeT m b
+-- --       loop FreeJoinBot _ = mbot
+-- --       loop (FreeJoinJoin xs ys) k = loop xs k <⊔> loop ys k
+-- --       loop (FreeJoinLatticeElem x) k = k x
+-- -- 
+-- -- instance FunctorUnit FreeJoinLatticeT where
+-- --   funit ∷ (Functor m) ⇒ m ↝ FreeJoinLatticeT m
+-- --   funit = FreeJoinLatticeT ∘ map return
+-- -- instance FunctorDiscard FreeJoinLatticeT where
+-- --   fdiscard ∷ (Functor m) ⇒ FreeJoinLatticeT (FreeJoinLatticeT m) ↝ FreeJoinLatticeT m
+-- --   fdiscard = FreeJoinLatticeT ∘ map joins ∘ runFreeJoinLatticeT ∘ runFreeJoinLatticeT
+-- -- instance FunctorFunctor FreeJoinLatticeT where
+-- --   fmap ∷ (m ↝ n) → FreeJoinLatticeT m ↝ FreeJoinLatticeT n
+-- --   fmap f = FreeJoinLatticeT ∘ f ∘ runFreeJoinLatticeT
+-- -- 
+-- -- instance (Functorial Bot m) ⇒ MonadBot (FreeJoinLatticeT m) where
+-- --   mbot ∷ ∀ a. FreeJoinLatticeT m a
+-- --   mbot = with (functorial ∷ W (Bot (m (FreeJoinLattice a)))) $
+-- --     FreeJoinLatticeT bot
+-- -- instance (Functorial Join m) ⇒ MonadJoin (FreeJoinLatticeT m) where
+-- --   (<⊔>) ∷ ∀ a. FreeJoinLatticeT m a → FreeJoinLatticeT m a → FreeJoinLatticeT m a
+-- --   aM₁ <⊔> aM₂ = with (functorial ∷ W (Join (m (FreeJoinLattice a)))) $
+-- --     FreeJoinLatticeT $ runFreeJoinLatticeT aM₁ ⊔ runFreeJoinLatticeT aM₂
+-- -- 
+-- -- -- ## FreeJoinLattice // State
+-- -- 
+-- -- joinLatticeStateCommute ∷ (Functor m) ⇒ FreeJoinLatticeT (StateT s m) ↝ StateT s (FreeJoinLatticeT m)
+-- -- joinLatticeStateCommute aMM = StateT $ \ s → FreeJoinLatticeT $ ff ^$ runStateTWith s $ runFreeJoinLatticeT aMM
+-- --   where
+-- --     ff ∷ (s,FreeJoinLattice a) → FreeJoinLattice (s,a)
+-- --     ff (s,xs) = (s,) ^$ xs
+-- -- 
+-- -- stateJoinLatticeCommute ∷ ∀ s m. (Functor m, JoinLattice s) ⇒ StateT s (FreeJoinLatticeT m) ↝ FreeJoinLatticeT (StateT s m)
+-- -- stateJoinLatticeCommute aMM = FreeJoinLatticeT $ StateT $ \ s → ff ^$ runFreeJoinLatticeT $ runStateTWith s aMM
+-- --   where
+-- --     ff ∷ FreeJoinLattice (s,a) → (s,FreeJoinLattice a)
+-- --     ff asL = (joins $ fst ^$ asL, snd ^$ asL)
+-- -- 
+-- -- instance (Functor m, MonadState s m, JoinLattice s) ⇒ MonadState s (FreeJoinLatticeT m) where
+-- --   stateI ∷ FreeJoinLatticeT m ↝ StateT s (FreeJoinLatticeT m)
+-- --   stateI = joinLatticeStateCommute ∘ fmap stateI
+-- --   stateE ∷ StateT s (FreeJoinLatticeT m) ↝ FreeJoinLatticeT m
+-- --   stateE = fmap stateE ∘ stateJoinLatticeCommute
+-- -- 
+-- -- -- FreeLattice
+-- -- 
+-- -- data FreeLattice a =
+-- --     FreeBot
+-- --   | FreeTop
+-- --   | FreeJoin (FreeLattice a) (FreeLattice a)
+-- --   | FreeMeet (FreeLattice a) (FreeLattice a)
+-- --   | FreeLatticeElem a
+-- -- 
+-- -- joinsFreeLattice ∷ FreeLattice (FreeLattice a) → FreeLattice a
+-- -- joinsFreeLattice FreeBot = FreeBot
+-- -- joinsFreeLattice FreeTop = FreeTop
+-- -- joinsFreeLattice (FreeJoin xs ys) = FreeJoin (joinsFreeLattice xs) (joinsFreeLattice ys)
+-- -- joinsFreeLattice (FreeMeet xs ys) = FreeMeet (joinsFreeLattice xs) (joinsFreeLattice ys)
+-- -- joinsFreeLattice (FreeLatticeElem xs) = xs
+-- -- 
+-- -- instance Functor FreeLattice where
+-- --   map ∷ (a → b) → FreeLattice a → FreeLattice b
+-- --   map _ FreeBot = FreeBot
+-- --   map _ FreeTop = FreeTop
+-- --   map f (FreeJoin xs ys) = FreeJoin (map f xs) (map f ys)
+-- --   map f (FreeMeet xs ys) = FreeMeet (map f xs) (map f ys)
+-- --   map f (FreeLatticeElem x) = FreeLatticeElem $ f x
+-- -- instance Monad FreeLattice where
+-- --   return ∷ a → FreeLattice a
+-- --   return = FreeLatticeElem
+-- --   (≫=) ∷ FreeLattice a → (a → FreeLattice b) → FreeLattice b
+-- --   FreeBot ≫= _ = FreeBot
+-- --   FreeTop ≫= _ = FreeTop
+-- --   FreeJoin xs ys ≫= k = FreeJoin (xs ≫= k) (ys ≫= k)
+-- --   FreeMeet xs ys ≫= k = FreeMeet (xs ≫= k) (ys ≫= k)
+-- --   FreeLatticeElem x ≫= k = k x
+-- -- 
+-- -- instance Bot (FreeLattice a) where bot = FreeBot
+-- -- instance Join (FreeLattice a) where (⊔) = FreeJoin
+-- -- instance JoinLattice (FreeLattice a)
+-- -- instance Top (FreeLattice a) where top = FreeTop
+-- -- instance Meet (FreeLattice a) where (⊓) = FreeMeet
+-- -- instance MeetLattice (FreeLattice a)
+-- -- 
+-- -- newtype FreeLatticeT m a = FreeLatticeT { runFreeLatticeT ∷ m (FreeLattice a) }
+-- -- 
+-- -- instance (Functor m) ⇒ Functor (FreeLatticeT m) where
+-- --   map ∷ (a → b) → FreeLatticeT m a → FreeLatticeT m b
+-- --   map f = FreeLatticeT ∘ map (map f) ∘ runFreeLatticeT
+-- -- instance 
+-- --   ( Monad m
+-- --   , Functorial Bot m
+-- --   , Functorial Join m
+-- --   , Functorial Top m
+-- --   , Functorial Meet m
+-- --   ) ⇒ Monad (FreeLatticeT m) where
+-- --   return ∷ a → FreeLatticeT m a
+-- --   return = FreeLatticeT ∘ return ∘ FreeLatticeElem
+-- --   (≫=) ∷ FreeLatticeT m a → (a → FreeLatticeT m b) → FreeLatticeT m b
+-- --   xM ≫= k₀ = FreeLatticeT $ do
+-- --     x ← runFreeLatticeT xM 
+-- --     runFreeLatticeT $ loop x k₀
+-- --     where
+-- --       loop ∷ FreeLattice a → (a → FreeLatticeT m b) → FreeLatticeT m b
+-- --       loop FreeBot _ = mbot
+-- --       loop FreeTop _ = mtop
+-- --       loop (FreeJoin xs ys) k = loop xs k <⊔> loop ys k
+-- --       loop (FreeMeet xs ys) k = loop xs k <⊓> loop ys k
+-- --       loop (FreeLatticeElem x) k = k x
+-- -- 
+-- -- instance FunctorUnit FreeLatticeT where
+-- --   funit ∷ (Functor m) ⇒ m ↝ FreeLatticeT m
+-- --   funit = FreeLatticeT ∘ map return
+-- -- instance FunctorDiscard FreeLatticeT where
+-- --   fdiscard ∷ (Functor m) ⇒ FreeLatticeT (FreeLatticeT m) ↝ FreeLatticeT m
+-- --   fdiscard = FreeLatticeT ∘ map joinsFreeLattice ∘ runFreeLatticeT ∘ runFreeLatticeT
+-- -- instance FunctorFunctor FreeLatticeT where
+-- --   fmap ∷ (m ↝ n) → FreeLatticeT m ↝ FreeLatticeT n
+-- --   fmap f = FreeLatticeT ∘ f ∘ runFreeLatticeT
+-- -- 
+-- -- instance (Functorial Bot m) ⇒ MonadBot (FreeLatticeT m) where
+-- --   mbot ∷ ∀ a. FreeLatticeT m a
+-- --   mbot = with (functorial ∷ W (Bot (m (FreeLattice a)))) $
+-- --     FreeLatticeT bot
+-- -- instance (Functorial Join m) ⇒ MonadJoin (FreeLatticeT m) where
+-- --   (<⊔>) ∷ ∀ a. FreeLatticeT m a → FreeLatticeT m a → FreeLatticeT m a
+-- --   aM₁ <⊔> aM₂ = with (functorial ∷ W (Join (m (FreeLattice a)))) $
+-- --     FreeLatticeT $ runFreeLatticeT aM₁ ⊔ runFreeLatticeT aM₂
+-- -- instance (Functorial Top m) ⇒ MonadTop (FreeLatticeT m) where
+-- --   mtop ∷ ∀ a. FreeLatticeT m a
+-- --   mtop = with (functorial ∷ W (Top (m (FreeLattice a)))) $
+-- --     FreeLatticeT top
+-- -- instance (Functorial Meet m) ⇒ MonadMeet (FreeLatticeT m) where
+-- --   (<⊓>) ∷ ∀ a. FreeLatticeT m a → FreeLatticeT m a → FreeLatticeT m a
+-- --   aM₁ <⊓> aM₂ = with (functorial ∷ W (Meet (m (FreeLattice a)))) $
+-- --     FreeLatticeT $ runFreeLatticeT aM₁ ⊓ runFreeLatticeT aM₂
+-- -- 
+-- -- -- ## Lattice // State
+-- -- 
+-- -- latticeStateCommute ∷ (Functor m) ⇒ FreeLatticeT (StateT s m) ↝ StateT s (FreeLatticeT m)
+-- -- latticeStateCommute aMM = StateT $ \ s → FreeLatticeT $ ff ^$ runStateTWith s $ runFreeLatticeT aMM
+-- --   where
+-- --     ff ∷ (s,FreeLattice a) → FreeLattice (s,a)
+-- --     ff (s,xs) = (s,) ^$ xs
+-- -- 
+-- -- stateLatticeCommute ∷ ∀ s m. (Functor m, Lattice s) ⇒ StateT s (FreeLatticeT m) ↝ FreeLatticeT (StateT s m)
+-- -- stateLatticeCommute aMM = FreeLatticeT $ StateT $ \ s → ff ^$ runFreeLatticeT $ runStateTWith s aMM
+-- --   where
+-- --     ff ∷ FreeLattice (s,a) → (s,FreeLattice a)
+-- --     ff FreeBot = (bot,bot)
+-- --     ff FreeTop = (top,top)
+-- --     ff (FreeJoin xs ys) = 
+-- --       let (s₁,xs') = ff xs
+-- --           (s₂,ys') = ff ys
+-- --       in (s₁ ⊔ s₂,FreeJoin xs' ys')
+-- --     ff (FreeMeet xs ys) =
+-- --       let (s₁,xs') = ff xs
+-- --           (s₂,ys') = ff ys
+-- --       in (s₁ ⊓ s₂,FreeMeet xs' ys')
+-- --     ff (FreeLatticeElem (s,x)) = (s,FreeLatticeElem x)
+-- -- 
+-- -- instance (Functor m, MonadState s m, Lattice s) ⇒ MonadState s (FreeLatticeT m) where
+-- --   stateI ∷ FreeLatticeT m ↝ StateT s (FreeLatticeT m)
+-- --   stateI = latticeStateCommute ∘ fmap stateI
+-- --   stateE ∷ StateT s (FreeLatticeT m) ↝ FreeLatticeT m
+-- --   stateE = fmap stateE ∘ stateLatticeCommute
+-- -- 
+-- -- -- # SetWithTop
+-- -- 
+-- -- data SetWithTop a = SetTop | SetNotTop (𝒫 a)
+-- -- 
+-- -- instance Bot (SetWithTop a) where bot = SetNotTop bot
+-- -- instance Join (SetWithTop a) where
+-- --   SetTop ⊔ _ = SetTop
+-- --   _ ⊔ SetTop = SetTop
+-- --   SetNotTop xs ⊔ SetNotTop ys = SetNotTop $ xs ⊔ ys
+-- -- instance JoinLattice (SetWithTop a)
+-- -- instance Top (SetWithTop a) where top = SetTop
+-- -- instance Meet (SetWithTop a) where
+-- --   SetTop ⊓ ys = ys
+-- --   xs ⊓ SetTop = xs
+-- --   SetNotTop xs ⊓ SetNotTop ys = SetNotTop $ xs ⊓ ys
+-- -- instance MeetLattice (SetWithTop a)
+-- -- instance Lattice (SetWithTop a)
+-- -- 
+-- -- -- (≫=*⊤) ∷ SetWithTop a → (a → SetWithTop b) → SetWithTop b
+-- -- -- SetTop ≫=*⊤ _       = SetTop
+-- -- -- SetNotTop xs ≫=*⊤ k = joins $ map k $ stream xs
+-- -- 
+-- -- -- # Constructive Classical
+-- -- 
+-- -- -- data ConstructiveClassical a = Constructive (𝒫 a) | Classical (a → 𝔹)
+-- -- -- 
+-- -- -- conClaPartition ∷ [ConstructiveClassical a] → ([𝒫 a], [a → 𝔹])
+-- -- -- conClaPartition = iter ff ([], [])
+-- -- --   where
+-- -- --     ff (Constructive c) (cs, ps) = (c : cs, ps)
+-- -- --     ff (Classical p) (cs, ps) = (cs, p : ps)
+-- -- -- 
+-- -- -- conClaBigProduct ∷ ∀ a. (Ord a) ⇒ [ConstructiveClassical a] → SetWithTop a
+-- -- -- conClaBigProduct xs = do
+-- -- --   let (cs, ps) = conClaPartition xs
+-- -- --       c ∷ 𝒫 a
+-- -- --       c = meets $ map SetNotTop cs
+-- -- --       p ∷ a → 𝔹
+-- -- --       p = joins ps
+-- -- --   case c of
+-- -- --     SetTop → if isL nilL ps then bot else top
+-- -- --     SetNotTop candidates → SetNotTop $
+-- -- --       candidates ≫=* \ candidate →
+-- -- --       botGuard $ p candidate ≫=* \ _ →
+-- -- --       set $ single candidate
+-- -- 
+-- -- -- -- -- SumOfProd {{{
+-- -- -- -- 
+-- -- -- -- newtype SumOfProd a = SumOfProd { unSumOfProd ∷ Set (Set a) }
+-- -- -- --   deriving (Eq, Ord)
+-- -- -- -- instance (Ord a) ⇒ Buildable a (SumOfProd a) where { nil = SumOfProd empty ; a & s = SumOfProd $ single (single a) ⊔ unSumOfProd s }
+-- -- -- -- 
+-- -- -- -- sumOfProdMap ∷ (Ord b) ⇒ (a → b) → SumOfProd a → SumOfProd b
+-- -- -- -- sumOfProdMap f = SumOfProd . setMap (setMap f) . unSumOfProd
+-- -- -- -- 
+-- -- -- -- sumOfProdConcretize ∷ (Ord b) ⇒ (a → ConstructiveClassical b) → SumOfProd a → SetWithTop b
+-- -- -- -- sumOfProdConcretize p v = setFromListWithTop $ conClaBigProduct *$ mlist $ map (map p . toList) $ toList $ unSumOfProd v
+-- -- -- -- 
+-- -- -- -- instance Bot (SumOfProd a) where bot = SumOfProd empty
+-- -- -- -- instance Join (SumOfProd a) where sps1 ⊔ sps2 = SumOfProd $ unSumOfProd sps1 ⊔ unSumOfProd sps2
+-- -- -- -- instance Meet (SumOfProd a) where
+-- -- -- --   sps₁ /\ sps₂ = SumOfProd $ do
+-- -- -- --     ps₁ ← unSumOfProd sps₁
+-- -- -- --     ps₂ ← unSumOfProd sps₂
+-- -- -- --     single $ ps₁ ⊔ ps₂
+-- -- -- -- instance (Ord a, Neg a) ⇒ Neg (SumOfProd a) where neg = sumOfProdMap neg . SumOfProd . setBigProduct . unSumOfProd
+-- -- -- -- instance JoinLattice (SumOfProd a)
+-- -- -- -- 
+-- -- -- -- -- }}}
